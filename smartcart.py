@@ -1,482 +1,158 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
+import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-
-# In[2]:
-
-
-df=pd.read_csv("smartcart_customers.csv")
-
-
-# In[3]:
-
-
-df.head()
-
-
-# In[4]:
-
-
-df.shape
-
-
-# In[5]:
-
-
-df.isnull().sum()
-
-
-# # Data Preprocessing
-
-# ## 1. Handle Missing Values
-
-# In[6]:
-
-
-df["Income"]=df["Income"].fillna(df["Income"].median())
-
-
-# In[7]:
-
-
-df.head()
-
-
-# ## Feature engineering
-
-# In[8]:
-
-
-# Age
-df["Age"]=2026-df["Year_Birth"]
-
-
-# In[9]:
-
-
-# Customer Joining Date
-
-df["Dt_Customer"]=pd.to_datetime(df["Dt_Customer"],dayfirst=True)
-
-reference_date=df["Dt_Customer"].max()
-
-df["Customer_Tenure_Days"]=(reference_date-df["Dt_Customer"]).dt.days
-
-
-# In[10]:
-
-
-# Spending
-
-df["Total_Spending"]=df["MntWines"]+df["MntFruits"]+df["MntMeatProducts"]+df["MntFishProducts"]+df["MntSweetProducts"]+df["MntGoldProds"]
-
-
-# In[11]:
-
-
-# Children
-df["Total_Children"]=df["Kidhome"]+df["Teenhome"]
-
-
-# In[14]:
-
-
-# Education
-
-df["Education"].value_counts()
-
-df["Education"]=df["Education"].replace({
-    "Basic":"Undergraduate","2n Cycle":"Undergraduate",
-    "Graduation":"Graduate",
-    "Master":"Postgraduate","PhD":"Postgraduate"
-})
-
-
-# In[18]:
-
-
-# Marital Status
-
-df["Living_With"]=df["Marital_Status"].replace({
-    "Married":"Partner","Together":"Partner",
-    "Single":"Alone","Divorced":"Alone",
-    "Widow":"Alone","Absurd":"Alone","YOLO":"Alone"
-})
-
-
-# ## Drop Columns
-
-# In[20]:
-
-
-df.head()
-
-
-# In[23]:
-
-
-cols=["ID","Year_Birth","Marital_Status","Kidhome","Teenhome","Dt_Customer"]
-spending_cols=["MntWines","MntFruits","MntMeatProducts","MntFishProducts","MntSweetProducts","MntGoldProds"]
-
-cols_to_drop=cols+spending_cols
-
-df_cleaned=df.drop(columns=cols_to_drop)
-
-
-# In[24]:
-
-
-df_cleaned.shape
-
-
-# In[26]:
-
-
-df_cleaned.head()
-
-
-# # Outliers
-
-# In[27]:
-
-
-cols=["Income","Recency","Response","Age","Total_Spending","Total_Children"]
-
-# relative plots of some features- pair plots
-sns.pairplot(df_cleaned[cols])
-
-
-# In[28]:
-
-
-# Remove outliers
-
-print("data size with outliers:",len(df_cleaned))
-
-df_cleaned=df_cleaned[(df_cleaned["Age"]<90)]
-df_cleaned=df_cleaned[(df_cleaned["Income"]<600_000)]
-
-print("data size withput outliers:",len(df_cleaned))
-
-
-# # Heatmap
-
-# In[29]:
-
-
-corr=df_cleaned.corr(numeric_only=True)
-
-
-# In[32]:
-
-
-plt.figure(figsize=(8,6))
-
-sns.heatmap(
-    corr,
-    annot=True,
-    annot_kws={"size":6},
-    cmap="coolwarm"
-)
-
-
-# In[33]:
-
-
-df_cleaned.shape
-
-
-# In[34]:
-
-
-df_cleaned.head()
-
-
-# # Encoding
-
-# In[35]:
-
-
-from sklearn.preprocessing import OneHotEncoder
-
-
-# In[37]:
-
-
-ohe=OneHotEncoder()
-
-cat_cols=["Education","Living_With"]
-
-enc_cols=ohe.fit_transform(df_cleaned[cat_cols])
-
-
-# In[40]:
-
-
-enc_df=pd.DataFrame(enc_cols.toarray(),columns=ohe.get_feature_names_out(cat_cols),index=df_cleaned.index)
-
-
-# In[42]:
-
-
-df_encoded=pd.concat([df_cleaned.drop(columns=cat_cols),enc_df],axis=1)
-
-
-# In[43]:
-
-
-df_encoded.shape
-
-
-# In[44]:
-
-
-df_encoded.head()
-
-
-# # Scaling
-
-# In[45]:
-
-
-from sklearn.preprocessing import StandardScaler
-
-
-# In[46]:
-
-
-X=df_encoded
-
-
-# In[47]:
-
-
-scaler=StandardScaler()
-
-X_scaled=scaler.fit_transform(X)
-
-
-# # Visualize
-
-# In[49]:
-
-
-X_scaled.shape
-
-
-# In[50]:
-
-
-# 2D
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.decomposition import PCA
-
-
-# In[54]:
-
-
-pca=PCA(n_components=3)
-
-X_pca=pca.fit_transform(X_scaled)
-
-
-# In[55]:
-
-
-pca.explained_variance_ratio_
-
-
-# In[59]:
-
-
-# plot
-fig=plt.figure(figsize=(8,6))
-
-ax=fig.add_subplot(111,projection="3d")
-
-ax.scatter(X_pca[:,0],X_pca[:,1],X_pca[:,2])
-
-ax.set_xlabel("PCA1")
-ax.set_ylabel("PCA2")
-ax.set_zlabel("PCA3")
-ax.set_title("3d projection")
-
-
-# # Analyze K value
-# ## 1. Elbow Method
-
-# In[61]:
-
-
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
-
-
-# In[62]:
-
-
 from sklearn.cluster import KMeans
-from kneed import KneeLocator
-
-wcss=[]
-for k in range(1,11):
-    kmeans=KMeans(n_clusters=k,random_state=42)
-    kmeans.fit_predict(X_pca)
-    wcss.append(kmeans.inertia_)
-
-
-# In[63]:
-
-
-knee=KneeLocator(range(1,11),wcss,curve="convex",direction="decreasing")
-optimal_k=knee.elbow
-
-
-# In[66]:
-
-
-print("best k =",optimal_k)
-
-
-# In[68]:
-
-
-# plot
-
-plt.plot(range(1,11),wcss,marker='o')
-plt.xlabel("K")
-plt.ylabel("WCSS")
-
-
-# ## 2. Silhouette Score
-
-# In[71]:
-
-
 from sklearn.metrics import silhouette_score
 
-scores=[]
+# ----------------------------------
+# Page config
+# ----------------------------------
+st.set_page_config(page_title="SmartCart Customer Segmentation", layout="wide")
+st.title("🛒 SmartCart Customer Clustering System")
 
-for k in range(2,11):
-    kmeans=KMeans(n_clusters=k,random_state=42)
-    labels=kmeans.fit_predict(X_pca)
-    score=silhouette_score(X_pca,labels)
-    scores.append(score)
+# ----------------------------------
+# Load data
+# ----------------------------------
+@st.cache_data
+def load_data():
+    return pd.read_csv("smartcart_customers.csv")
 
-# plot
-plt.plot(range(2,11),scores,marker='o')
-plt.xlabel("K")
-plt.ylabel("Silhouette score")
+df = load_data()
 
+# ----------------------------------
+# Preprocessing & Feature Engineering
+# ----------------------------------
+@st.cache_data
+def preprocess_data(df):
+    df = df.copy()
 
-# In[79]:
+    df["Income"] = df["Income"].fillna(df["Income"].median())
+    df["Age"] = 2026 - df["Year_Birth"]
 
+    df["Dt_Customer"] = pd.to_datetime(df["Dt_Customer"], dayfirst=True)
+    ref_date = df["Dt_Customer"].max()
+    df["Customer_Tenure_Days"] = (ref_date - df["Dt_Customer"]).dt.days
 
-# combined plot
+    df["Total_Spending"] = (
+        df["MntWines"] + df["MntFruits"] + df["MntMeatProducts"] +
+        df["MntFishProducts"] + df["MntSweetProducts"] + df["MntGoldProds"]
+    )
 
-k_range=range(2,11)
+    df["Total_Children"] = df["Kidhome"] + df["Teenhome"]
 
-fig,ax1=plt.subplots(figsize=(8,6))
+    df["Education"] = df["Education"].replace({
+        "Basic": "Undergraduate", "2n Cycle": "Undergraduate",
+        "Graduation": "Graduate",
+        "Master": "Postgraduate", "PhD": "Postgraduate"
+    })
 
-ax1.plot(k_range,wcss[:len(k_range)],marker="o",color="blue")
-ax1.set_xlabel("K")
-ax1.set_ylabel("WCSS")
+    df["Living_With"] = df["Marital_Status"].replace({
+        "Married": "Partner", "Together": "Partner",
+        "Single": "Alone", "Divorced": "Alone",
+        "Widow": "Alone", "Absurd": "Alone", "YOLO": "Alone"
+    })
 
-ax2=ax1.twinx()
-ax2.plot(k_range,scores[:len(k_range)],marker="x",color="red",linestyle="--")
-ax2.set_ylabel("SS")
+    drop_cols = [
+        "ID", "Year_Birth", "Marital_Status", "Kidhome", "Teenhome",
+        "Dt_Customer", "MntWines", "MntFruits", "MntMeatProducts",
+        "MntFishProducts", "MntSweetProducts", "MntGoldProds"
+    ]
 
+    return df.drop(columns=drop_cols)
 
-# # Clustering
+df_cleaned = preprocess_data(df)
 
-# In[80]:
+# ----------------------------------
+# Encoding & Scaling
+# ----------------------------------
+@st.cache_data
+def encode_scale(df):
+    cat_cols = ["Education", "Living_With"]
 
+    ohe = OneHotEncoder(sparse_output=False)
+    encoded = ohe.fit_transform(df[cat_cols])
 
-# K_means
+    enc_df = pd.DataFrame(
+        encoded,
+        columns=ohe.get_feature_names_out(cat_cols),
+        index=df.index
+    )
 
-kmeans=KMeans(n_clusters=4,random_state=42)
-labels_kmeans=kmeans.fit_predict(X_pca)
+    df_final = pd.concat([df.drop(columns=cat_cols), enc_df], axis=1)
 
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(df_final)
 
-# In[81]:
+    return X_scaled, df_final
 
+X_scaled, df_final = encode_scale(df_cleaned)
 
-fig=plt.figure(figsize=(8,6))
+# ----------------------------------
+# PCA + Clustering
+# ----------------------------------
+@st.cache_resource
+def run_clustering(X):
+    pca = PCA(n_components=3)
+    X_pca = pca.fit_transform(X)
 
-ax=fig.add_subplot(111,projection="3d")
+    kmeans = KMeans(n_clusters=4, random_state=42)
+    labels = kmeans.fit_predict(X_pca)
 
-ax.scatter(X_pca[:,0],X_pca[:,1],X_pca[:,2],c=labels_kmeans)
+    sil_score = silhouette_score(X_pca, labels)
 
+    return X_pca, labels, sil_score
 
-# In[82]:
+X_pca, labels, sil_score = run_clustering(X_scaled)
 
+df_final["Cluster"] = labels
 
-# Agglomerative Clustering
-from sklearn.cluster import AgglomerativeClustering
+# ----------------------------------
+# Sidebar
+# ----------------------------------
+st.sidebar.header("Controls")
+show_plot = st.sidebar.checkbox("Show 3D Cluster Plot")
+show_summary = st.sidebar.checkbox("Show Cluster Summary")
 
+# ----------------------------------
+# Metrics
+# ----------------------------------
+st.subheader("📊 Model Performance")
+st.metric("Silhouette Score", round(sil_score, 3))
+st.metric("Number of Customers", df_final.shape[0])
+st.metric("Clusters", 4)
 
-# In[83]:
+# ----------------------------------
+# 3D Plot
+# ----------------------------------
+if show_plot:
+    st.subheader("🧠 3D PCA Cluster Visualization")
 
+    fig = plt.figure(figsize=(7, 5))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(
+        X_pca[:, 0],
+        X_pca[:, 1],
+        X_pca[:, 2],
+        c=labels
+    )
+    ax.set_xlabel("PCA 1")
+    ax.set_ylabel("PCA 2")
+    ax.set_zlabel("PCA 3")
 
-agg_clf=AgglomerativeClustering(n_clusters=4,linkage="ward")
-labels_agg=agg_clf.fit_predict(X_pca)
+    st.pyplot(fig)
 
-
-# In[84]:
-
-
-fig=plt.figure(figsize=(8,6))
-ax=fig.add_subplot(111,projection="3d")
-ax.scatter(X_pca[:,0],X_pca[:,1],X_pca[:,2],c=labels_agg)
-
-
-# # Characterization of Clusters
-
-# In[98]:
-
-
-X["cluster"]=labels_agg
-
-
-# In[99]:
-
-
-X.head()
-
-
-# In[100]:
-
-
-pal=["red","blue","yellow","green"]
-
-sns.countplot(x=X["cluster"],palette=pal,hue=X["cluster"])
-
-
-# In[101]:
-
-
-# Income & Spending patterns
-
-sns.scatterplot(x=X["Total_Spending"],y=X["Income"],hue=X["cluster"],palette=pal)
-
-
-# In[102]:
-
-
+# ----------------------------------
 # Cluster Summary
+# ----------------------------------
+if show_summary:
+    st.subheader("📋 Cluster Summary")
+    summary = df_final.groupby("Cluster").mean()
+    st.dataframe(summary)
 
-cluster_summary=X.groupby("cluster").mean()
-print(cluster_summary)
-
-
-# In[ ]:
-
-
-
-
+# ----------------------------------
+# Footer
+# ----------------------------------
+st.markdown("---")
+st.caption("SmartCart Customer Segmentation using KMeans & PCA")
