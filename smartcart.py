@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="SmartCart Customer Segmentation",
     layout="wide"
 )
-st.title("🛒 SmartCart Customer Segmentation (Agglomerative)")
+st.title("🛒 SmartCart Customer Segmentation")
 
 # --------------------------------------------------
 # Load data
