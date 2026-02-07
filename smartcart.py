@@ -3,27 +3,30 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 
-# ----------------------------------
+# --------------------------------------------------
 # Page config
-# ----------------------------------
-st.set_page_config(page_title="SmartCart Customer Segmentation", layout="wide")
-st.title("🛒 SmartCart Customer Clustering System")
+# --------------------------------------------------
+st.set_page_config(
+    page_title="SmartCart Customer Segmentation",
+    layout="wide"
+)
+st.title("🛒 SmartCart Customer Segmentation (Agglomerative)")
 
-# ----------------------------------
+# --------------------------------------------------
 # Load data
-# ----------------------------------
+# --------------------------------------------------
 @st.cache_data
 def load_data():
     return pd.read_csv("smartcart_customers.csv")
 
 df = load_data()
 
-# ----------------------------------
+# --------------------------------------------------
 # Preprocessing & Feature Engineering
-# ----------------------------------
+# --------------------------------------------------
 @st.cache_data
 def preprocess_data(df):
     df = df.copy()
@@ -64,11 +67,11 @@ def preprocess_data(df):
 
 df_cleaned = preprocess_data(df)
 
-# ----------------------------------
+# --------------------------------------------------
 # Encoding & Scaling
-# ----------------------------------
+# --------------------------------------------------
 @st.cache_data
-def encode_scale(df):
+def encode_and_scale(df):
     cat_cols = ["Education", "Living_With"]
 
     ohe = OneHotEncoder(sparse_output=False)
@@ -80,79 +83,97 @@ def encode_scale(df):
         index=df.index
     )
 
-    df_final = pd.concat([df.drop(columns=cat_cols), enc_df], axis=1)
+    df_final = pd.concat(
+        [df.drop(columns=cat_cols), enc_df],
+        axis=1
+    )
 
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(df_final)
 
     return X_scaled, df_final
 
-X_scaled, df_final = encode_scale(df_cleaned)
+X_scaled, df_final = encode_and_scale(df_cleaned)
 
-# ----------------------------------
-# PCA + Clustering
-# ----------------------------------
+# --------------------------------------------------
+# PCA + Agglomerative Clustering
+# --------------------------------------------------
 @st.cache_resource
-def run_clustering(X):
-    pca = PCA(n_components=3)
+def run_agglomerative(X, n_clusters):
+    pca = PCA(n_components=3, random_state=42)
     X_pca = pca.fit_transform(X)
 
-    kmeans = KMeans(n_clusters=4, random_state=42)
-    labels = kmeans.fit_predict(X_pca)
+    agg = AgglomerativeClustering(
+        n_clusters=n_clusters,
+        linkage="ward"
+    )
+    labels = agg.fit_predict(X_pca)
 
-    sil_score = silhouette_score(X_pca, labels)
+    sil = silhouette_score(X_pca, labels)
 
-    return X_pca, labels, sil_score
+    return X_pca, labels, sil
 
-X_pca, labels, sil_score = run_clustering(X_scaled)
+# --------------------------------------------------
+# Sidebar controls
+# --------------------------------------------------
+st.sidebar.header("⚙️ Controls")
 
+n_clusters = st.sidebar.slider(
+    "Number of Clusters",
+    min_value=2,
+    max_value=6,
+    value=4
+)
+
+show_plot = st.sidebar.checkbox("Show 3D PCA Plot", True)
+show_summary = st.sidebar.checkbox("Show Cluster Summary", True)
+
+# Run clustering
+X_pca, labels, sil_score = run_agglomerative(X_scaled, n_clusters)
 df_final["Cluster"] = labels
 
-# ----------------------------------
-# Sidebar
-# ----------------------------------
-st.sidebar.header("Controls")
-show_plot = st.sidebar.checkbox("Show 3D Cluster Plot")
-show_summary = st.sidebar.checkbox("Show Cluster Summary")
-
-# ----------------------------------
+# --------------------------------------------------
 # Metrics
-# ----------------------------------
-st.subheader("📊 Model Performance")
-st.metric("Silhouette Score", round(sil_score, 3))
-st.metric("Number of Customers", df_final.shape[0])
-st.metric("Clusters", 4)
+# --------------------------------------------------
+st.subheader("📊 Clustering Metrics")
 
-# ----------------------------------
-# 3D Plot
-# ----------------------------------
+col1, col2, col3 = st.columns(3)
+col1.metric("Clusters", n_clusters)
+col2.metric("Customers", df_final.shape[0])
+col3.metric("Silhouette Score", round(sil_score, 3))
+
+# --------------------------------------------------
+# 3D PCA Plot
+# --------------------------------------------------
 if show_plot:
-    st.subheader("🧠 3D PCA Cluster Visualization")
+    st.subheader("🧠 3D PCA Visualization (Agglomerative)")
 
     fig = plt.figure(figsize=(7, 5))
     ax = fig.add_subplot(111, projection="3d")
+
     ax.scatter(
         X_pca[:, 0],
         X_pca[:, 1],
         X_pca[:, 2],
         c=labels
     )
+
     ax.set_xlabel("PCA 1")
     ax.set_ylabel("PCA 2")
     ax.set_zlabel("PCA 3")
 
     st.pyplot(fig)
 
-# ----------------------------------
+# --------------------------------------------------
 # Cluster Summary
-# ----------------------------------
+# --------------------------------------------------
 if show_summary:
-    st.subheader("📋 Cluster Summary")
+    st.subheader("📋 Cluster Summary (Mean Values)")
     summary = df_final.groupby("Cluster").mean()
-    st.dataframe(summary)
+    st.dataframe(summary.round(2))
 
-# ----------------------------------
+# --------------------------------------------------
 # Footer
-# ----------------------------------
+# --------------------------------------------------
 st.markdown("---")
-st.caption("SmartCart Customer Segmentation using KMeans & PCA")
+st.caption("Customer Segmentation using Agglomerative Clustering & PCA")
