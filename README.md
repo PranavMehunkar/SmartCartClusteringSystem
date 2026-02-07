@@ -28,8 +28,8 @@ Try the live app here:
 
 <h2>Key Learnings</h2>
 During this project, I learned and applied several important machine learning and data preprocessing concepts, including:
-<ul><li>Handling missing values using <b>SimpleImputer</b> with appropriate strategies for numerical and categorical features</li></ul>
-<ul><li>Encoding categorical variables using <b>LabelEncoder</b> and <b>OneHotEncoder</b> based on feature type</li></ul>
+<ul><li>Grouping customers into meaningful segments based on spending behavior, income, demographics, and tenure—useful for targeted marketing and business insights</li</ul>
+<ul><li>Encoding categorical variables using <b>OneHotEncoder</b> based on feature type</li></ul>
 <ul><li>Performing <b>correlation analysis</b> and visualizing relationships between numerical features using correlation heatmaps</li></ul>
 <ul><li>Understanding the impact of feature scaling using <b>StandardScaler</b></li></ul>
-<ul><li>Comparing multiple machine learning models to select the most suitable one for deployment</li></ul>
+<ul><li>Discovering hidden patterns in customor behaviour and support data-driven decision-making for personalized marketing and customer retention</li></ul>
