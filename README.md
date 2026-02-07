@@ -1,9 +1,9 @@
 <h1>SmartCart Clustering System</h1>
-SmartCart Clustering System is a machine learning project that grouped customers into meaningful segments based on spending behavior, income, demographics, and tenure—useful for targeted marketing and business insights. The goal is to discover hidden patterns in customor behaviour and support data-driven decision-making for personalized marketing and customer retention.
+SmartCart Clustering System is a machine learning project that grouped customers into meaningful segments based on spending behavior, income, demographics, and tenure-useful for targeted marketing and business insights. The goal is to discover hidden patterns in customor behaviour and support data-driven decision-making for personalized marketing and customer retention.
 
 <h2>Project Structure</h2>
 <ul><li>smartcart.ipynb – Model for training and evaluation</li></ul>
-<ul><li>smart.py – Complete end-to-end ML pipeline</li></ul>
+<ul><li>smartcart.py – Complete end-to-end ML pipeline</li></ul>
 <ul><li>smartcart_customers.csv – Dataset used for training and evaluation</li></ul>
 
 <h2>Model Used</h2>
